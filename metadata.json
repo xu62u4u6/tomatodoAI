@@ -1,0 +1,5 @@
+{
+  "name": "TomatodoAI",
+  "description": "An intelligent productivity app combining a Pomodoro timer, task management, and a context-aware AI productivity coach using Gemini.",
+  "requestFramePermissions": []
+}
