@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { TimerMode } from '../types';
-import { TIMER_SETTINGS, MODE_COLORS, MODE_BG_COLORS } from '../constants';
+import { TIMER_SETTINGS, MODE_COLORS, MODE_BG_COLORS, MODE_BUTTON_COLORS } from '../constants';
 
 interface TimerProps {
   mode: TimerMode;
@@ -21,7 +21,7 @@ export const Timer: React.FC<TimerProps> = ({
   setIsRunning,
   onTimerComplete
 }) => {
-  
+
   // Handle timer tick
   useEffect(() => {
     let interval: number | undefined;
@@ -30,13 +30,18 @@ export const Timer: React.FC<TimerProps> = ({
       interval = window.setInterval(() => {
         setTimeLeft((prev) => prev - 1);
       }, 1000);
-    } else if (timeLeft === 0 && isRunning) {
-      setIsRunning(false);
-      onTimerComplete();
     }
 
     return () => clearInterval(interval);
-  }, [isRunning, timeLeft, setTimeLeft, setIsRunning, onTimerComplete]);
+  }, [isRunning, setTimeLeft]);
+
+  // Handle completion
+  useEffect(() => {
+    if (timeLeft === 0 && isRunning) {
+      setIsRunning(false);
+      onTimerComplete();
+    }
+  }, [timeLeft, isRunning, setIsRunning, onTimerComplete]);
 
   // Format seconds into MM:SS
   const formatTime = (seconds: number) => {
@@ -57,7 +62,7 @@ export const Timer: React.FC<TimerProps> = ({
 
   return (
     <div className="flex flex-col items-center justify-center py-10 animate-fade-in">
-      
+
       {/* Mode Switcher - Minimalist Text Tabs */}
       <div className="flex items-center gap-8 mb-12">
         {Object.values(TimerMode).map((m) => (
@@ -71,11 +76,11 @@ export const Timer: React.FC<TimerProps> = ({
           >
             {m === TimerMode.Pomodoro ? 'Pomodoro' : m === TimerMode.ShortBreak ? 'Short Break' : 'Long Break'}
             {/* Active Indicator Dot */}
-            <span 
+            <span
               className={`
                 absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full transition-all duration-300
                 ${mode === m ? `opacity-100 scale-100 ${MODE_BG_COLORS[m]}` : 'opacity-0 scale-0 bg-stone-300'}
-              `} 
+              `}
             />
           </button>
         ))}
@@ -83,32 +88,33 @@ export const Timer: React.FC<TimerProps> = ({
 
       {/* Timer Display - Large Serif Typography with Morandi Color */}
       <div className="relative mb-12 group cursor-default">
-         <div className={`font-serif text-[7rem] sm:text-[9rem] leading-none tracking-tighter tabular-nums select-none transition-colors duration-500 ${currentTextColor}`}>
-           {formatTime(timeLeft)}
-         </div>
-         {/* Subtle decoration */}
-         <div className={`absolute -right-4 top-4 w-2 h-2 rounded-full transition-all duration-500 ${isRunning ? `${currentBgColor} animate-pulse` : 'bg-stone-200'}`}></div>
+        <div className={`font-serif text-[7rem] sm:text-[9rem] leading-none tracking-tighter tabular-nums select-none transition-colors duration-500 ${currentTextColor}`}>
+          {formatTime(timeLeft)}
+        </div>
+        {/* Subtle decoration */}
+        <div className={`absolute -right-4 top-4 w-2 h-2 rounded-full transition-all duration-500 ${isRunning ? `${currentBgColor} animate-pulse` : 'bg-stone-200'}`}></div>
       </div>
 
-      {/* Control - Dark, Pill-shaped button */}
+      {/* Start/Pause Button with Dynamic Theme Color */}
       <button
         onClick={() => setIsRunning(!isRunning)}
         className={`
-          flex items-center justify-center gap-3
-          px-10 py-4 rounded-lg
-          transition-all duration-300 transform hover:-translate-y-1 active:scale-95
-          ${isRunning 
-            ? 'bg-stone-100 text-stone-900 border border-stone-200 hover:bg-stone-200' 
-            : `bg-stone-900 text-cream shadow-lg hover:shadow-xl shadow-stone-900/10`
-          }
+          w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 shadow-md hover:shadow-lg hover:scale-105 active:scale-95
+          bg-theme text-white hover:bg-theme/90 z-50 relative
         `}
       >
-        <span className="font-medium text-lg tracking-wide">
-          {isRunning ? 'Pause Timer' : 'Start Focus'}
-        </span>
-        <i className={`fa-solid ${isRunning ? 'fa-pause' : 'fa-arrow-right'} text-sm`}></i>
+        {isRunning ? (
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+            <rect x="6" y="4" width="4" height="16" rx="1" />
+            <rect x="14" y="4" width="4" height="16" rx="1" />
+          </svg>
+        ) : (
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none" className="ml-1">
+            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+          </svg>
+        )}
       </button>
-      
+
     </div>
   );
 };

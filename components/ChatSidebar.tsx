@@ -3,7 +3,6 @@ import { createChatSession } from '../services/openaiService';
 import { storageService } from '../services/storageService';
 import { ChatMessage, Task, TimerMode, SuggestedTask, AIChatSession } from '../types';
 
-
 interface ChatSidebarProps {
   tasks: Task[];
   activeTaskId: string | null;
@@ -41,21 +40,10 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
         // We need to map them.
         const restored: ChatMessage[] = saved.map((m, i) => ({
           id: `hist-${i}`,
-          role: m.role as 'user' | 'model', // 'assistant' -> 'model'
-          text: m.content
-        })).map(m => m.role === 'assistant' ? { ...m, role: 'model' } : m); // fix role mapping
-
-        // Actually, openaiService uses 'assistant', UI uses 'model' (Gemini legacy)
-        // Let's standardize on 'model' for UI, 'assistant' for service/storage if possible, or just map.
-        // My adapter stores 'user'|'assistant'|'system'.
-        // UI expects 'user'|'model'.
-
-        const mapped = saved.map((m, i) => ({
-          id: `restored-${i}`,
           role: (m.role === 'assistant' ? 'model' : 'user') as 'user' | 'model',
           text: m.content
         }));
-        setMessages(mapped);
+        setMessages(restored);
       } else {
         setMessages([
           { id: '1', role: 'model', text: 'Hello! I can help you break down your projects. Tell me what you want to achieve today.' }
@@ -101,7 +89,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
     try {
       const activeTask = tasks.find(t => t.id === activeTaskId);
       const taskContext = activeTask
-        ? `Focusing on: "${activeTask.title}".`
+        ? `Focusing on: "${activeTask.title}".\nNotes: ${activeTask.note || 'None'}`
         : `Current Tasks: ${tasks.map(t => t.title).join(', ') || 'None'}.`;
 
       const timerContext = `Timer: ${timerMode}, ${Math.floor(timeLeft / 60)}m left.`;
@@ -159,10 +147,10 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
       {/* Header */}
       <div className="p-6 border-b border-stone-100 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-2 h-2 rounded-full bg-terracotta-500"></div>
-          <span className="font-serif font-semibold text-stone-800 text-lg">Coach</span>
+          <i className="fa-solid fa-fire text-theme opacity-70"></i>
+          <span className="font-serif font-semibold text-stone-800 text-lg">TomatodoAI</span>
         </div>
-        <span className="text-[10px] font-bold text-stone-400 border border-stone-200 px-2 py-0.5 rounded-full uppercase tracking-wider">Beta</span>
+        {/* <span className="text-[10px] font-bold text-stone-400 border border-stone-200 px-2 py-0.5 rounded-full uppercase tracking-wider">Beta</span> */}
       </div>
 
       {/* Messages */}
@@ -170,15 +158,15 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
         {messages.map((msg) => (
           <div key={msg.id} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
             <div className={`
-              max-w-[90%] px-5 py-4 rounded-2xl text-sm leading-relaxed shadow-sm
+              max-w-[85%] px-5 py-3.5 rounded-2xl text-sm leading-relaxed shadow-sm
               ${msg.role === 'user'
-                ? 'bg-stone-100 text-stone-800 rounded-br-none'
-                : 'bg-white border border-stone-100 text-stone-700 rounded-bl-none'}
+                ? `bg-theme text-white rounded-br-none ml-auto border-none shadow-md`
+                : 'bg-white border border-stone-100 text-stone-700 rounded-bl-none shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05)]'}
             `}>
               {msg.role === 'model' && (
                 <div className="flex gap-2 mb-2 items-center">
-                  <i className="fa-solid fa-wand-magic-sparkles text-terracotta-500 text-xs"></i>
-                  <span className="font-serif font-bold text-stone-900 text-xs">AI Coach</span>
+                  <i className="fa-solid fa-fire text-theme opacity-70 text-xs"></i>
+                  <span className="font-serif font-bold text-stone-900 text-xs">TomatodoAI</span>
                 </div>
               )}
 
@@ -231,8 +219,8 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
         {isTyping && (
           <div className="flex flex-col items-start animate-fade-in">
             <div className="flex gap-2 mb-2 items-center pl-1">
-              <i className="fa-solid fa-wand-magic-sparkles text-terracotta-500 text-xs"></i>
-              <span className="font-serif font-bold text-stone-900 text-xs">AI Coach</span>
+              <i className="fa-solid fa-fire text-theme opacity-70 text-xs"></i>
+              <span className="font-serif font-bold text-stone-900 text-xs">TomatodoAI</span>
             </div>
             <div className="bg-white border border-stone-100 px-5 py-3 rounded-2xl rounded-bl-none shadow-sm">
               <div className="flex gap-1.5">
@@ -246,8 +234,8 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
-      <div className="p-4 border-t border-stone-100 bg-stone-50/50">
+      {/* Input - Floating Style */}
+      <div className="p-6 pt-2 pb-8 bg-transparent">
         <div className="relative">
           <textarea
             value={input}
@@ -256,15 +244,15 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
             placeholder="Discuss your tasks..."
             disabled={isTyping}
             rows={1}
-            className="w-full pl-4 pr-12 py-3 bg-white border border-stone-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-stone-300 focus:border-stone-400 transition-all text-sm text-stone-800 placeholder-stone-400 shadow-sm resize-none"
-            style={{ minHeight: '44px', maxHeight: '120px' }}
+            className="w-full pl-5 pr-14 py-4 bg-white border-0 rounded-2xl focus:outline-none focus:ring-2 focus:ring-stone-100/50 transition-all text-sm text-stone-800 placeholder-stone-400 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] resize-none"
+            style={{ minHeight: '52px', maxHeight: '120px' }}
           />
           <button
             onClick={handleSend}
             disabled={!input.trim() || isTyping}
-            className="absolute right-2 bottom-2 w-8 h-8 rounded-lg bg-stone-900 text-white flex items-center justify-center hover:bg-black disabled:opacity-30 disabled:hover:bg-stone-900 transition-all shadow-md"
+            className="absolute right-2 bottom-2 w-10 h-10 rounded-xl bg-stone-900 text-white flex items-center justify-center hover:bg-black disabled:opacity-30 disabled:hover:bg-stone-900 transition-all shadow-md group"
           >
-            <i className="fa-solid fa-paper-plane text-xs"></i>
+            <i className="fa-solid fa-paper-plane text-xs group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform"></i>
           </button>
         </div>
       </div>

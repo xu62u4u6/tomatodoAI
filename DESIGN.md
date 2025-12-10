@@ -1,53 +1,60 @@
 # TomatodoAI Design System
 
-## Design Philosophy: "Claude Style"
-The design of TomatodoAI is inspired by the clean, typographic, and warm aesthetic of Anthropic's Claude interface. It emphasizes readability, calmness, and a "premium paper" feel.
+## Design Philosophy: "Focused Minimalism"
+The design evolves the "Claude Style" into a hyper-focused, minimalist aesthetic. It prioritizes the user's current task and time management without visual distractions. The interface is clean, paper-like, and utilizes specific "Morandi" tones to convey a calm, productive atmosphere.
 
 ### Key Characteristics
-- **Warm Backgrounds:** Avoiding harsh pure white in favor of cream and stone tones.
-- **Serif Typography:** Using elegant serif fonts for headings to evoke a literary/editorial feel.
-- **Minimalist UI:** Reducing clutter, using whitespace effectively.
-- **Subtle Interactions:** Smooth transitions and gentle hover states.
+- **Focused Layout:** A three-column layout where the center "Focus Zone" is the visual anchor.
+- **Paper-Like Warms:** Backgrounds uses warm, off-white tones (`bg-cream`, `bg-pomodoro-bg`) effectively like high-quality stationery.
+- **Mixed Typography:** A deliberate contrast between elegant **Serif** (Titles, Timer) and clean **Sans-Serif** (Tasks, UI controls).
+- **Dynamic Theming:** All primary elements (Icons, Borders, Backgrounds) adapt to the current timer mode (Pomodoro, Short Break, Long Break).
 
 ## Color Palette: Morandi Theme
-The application uses a "Morandi" color palette, known for its muted, gray-tinged hues that convey sophistication and calm.
+The application uses a widely recognized "Morandi" color palette—muted, gray-tinged hues that feel sophisticated and organic.
 
-### Core Colors
-| Color Name | Hex Code | Tailwind Class | Usage |
+### Functional Colors (Modes)
+| Mode | Color Name | Hex Code | Usage |
 | :--- | :--- | :--- | :--- |
-| **Cream** | `#fbf9f1` | `bg-cream` | Main application background (Warm Paper) |
-| **Stone 900** | `#1c1917` | `text-stone-900` | Primary text |
-| **Stone 800** | `#292524` | `text-stone-800` | Headings |
-| **Stone 600** | `#57534e` | `text-stone-600` | Secondary text / Icons |
-| **White** | `#ffffff` | `bg-white` | Cards, Sidebar, Modals |
+| **Pomodoro** | **Muted Terra** | `#c08481` | Focus timer, primary actions, fire icons. |
+| **Short Break** | **Sage** | `#8da399` | Short break timer, peaceful transitions. |
+| **Long Break** | **Dusty Blue** | `#92a1b9` | Long break timer, deep rest. |
 
-### Functional Colors (Timer Modes)
-| Mode | Color Name | Hex Code | Tailwind Class | Usage |
-| :--- | :--- | :--- | :--- | :--- |
-| **Pomodoro** | **Muted Terra** | `#c08481` | `text-morandi-red`, `bg-morandi-red` | Focus timer, primary actions |
-| **Short Break** | **Sage** | `#8da399` | `text-morandi-green`, `bg-morandi-green` | Short break timer |
-| **Long Break** | **Dusty Blue** | `#92a1b9` | `text-morandi-blue`, `bg-morandi-blue` | Long break timer |
+### Semantic Usage
+- **Primary Elements:** `text-theme` (mapped to current mode color), `bg-theme`.
+- **Secondary/Hover:** `opacity-70` for icons, `bg-theme/10` for subtle backgrounds.
 
 ## Typography
 
-### Headings
-- **Font:** `Playfair Display`
-- **Style:** Serif, Elegant, Editorial.
-- **Usage:** Main titles, section headers.
+### Display & Timer
+- **Font:** Serif (e.g., `Playfair Display` or system serif).
+- **Usage:**
+    - **Timer Display:** Extra large, tabular nums for readability.
+    - **Brand Logo:** "TomatodoAI" in the header.
+    - **Quotes:** Inspirational text below the timer.
 
-### Body Text
-- **Font:** `Inter`
-- **Style:** Sans-serif, Clean, Legible.
-- **Usage:** Task lists, chat interface, buttons.
+### Interface & Tasks
+- **Font:** Sans-Serif (e.g., `Inter` or system sans).
+- **Usage:**
+    - **Current Task Title:** Bold, high legibility.
+    - **Navigation:** Settings icons.
+    - **Control Buttons:** Start/Stop/Mode toggles.
 
 ## UI Components
 
-### Buttons & Interactive Elements
-- **Shape:** Rounded corners (`rounded-lg` or `rounded-full`).
-- **States:** Subtle opacity changes or background darkening on hover.
-- **Shadows:** Soft, diffused shadows (`shadow-sm`, `shadow-md`) to create depth without harshness.
+### Header
+- **Style:** Extremely minimalist.
+- **Content:**
+    - **Left:** Brand Logo (Serif) with themed Fire icon.
+    - **Right:** Settings Gear icon (Themed).
+- **Behavior:** Stays out of the way, framing the content.
 
-### Layout
-- **Container:** Centered `max-w-7xl` layout.
-- **Sidebar:** Collapsible chat sidebar on mobile, fixed on desktop.
-- **Spacing:** Generous padding (`p-6`, `p-12`) to let the content breathe.
+### Focus Zone (Center)
+- **Timer:** The centerpiece. Large typography, minimal controls.
+- **Task Card:** A white, shadowed card floating below the timer. Contains the active task details.
+- **Visuals:** Uses FontAwesome icons (`fa-solid`) colored dynamically (`text-theme`) for consistency.
+
+### Navigation & Icons
+- **Library:** FontAwesome Solid (`fa-solid`).
+- **Styling:**
+    - Standard Icon: `<i className="fa-solid fa-[name] text-theme opacity-70"></i>`
+    - This ensures icons always match the active mode (Red/Green/Blue) without hardcoding.
