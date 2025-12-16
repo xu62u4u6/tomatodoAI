@@ -6,7 +6,9 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  DragEndEvent
+  DragEndEvent,
+  DragStartEvent,
+  useDroppable
 } from '@dnd-kit/core';
 import {
   arrayMove,
@@ -17,6 +19,29 @@ import {
 
 import { Task, TimerMode } from '../types';
 import { TaskItem } from './TaskItem';
+
+// Internal Trash Zone Component
+const TrashZone = () => {
+  const { setNodeRef, isOver } = useDroppable({
+    id: 'trash-zone',
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`
+                absolute bottom-4 left-4 right-4 h-14 rounded-xl border-2 border-dashed flex items-center justify-center gap-2 transition-all duration-300 z-50
+                ${isOver
+          ? 'bg-red-100 border-red-500 text-red-600 scale-105 shadow-lg'
+          : 'bg-stone-100/80 border-stone-300 text-stone-500 backdrop-blur-sm'
+        }
+            `}
+    >
+      <i className={`fa-solid fa-trash-can text-base ${isOver ? 'animate-bounce' : ''}`}></i>
+      <span className="font-bold text-xs uppercase tracking-wide">Drop to delete</span>
+    </div>
+  );
+};
 
 interface TaskListProps {
   tasks: Task[];
@@ -45,6 +70,7 @@ export const TaskList: React.FC<TaskListProps> = ({
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskEst, setNewTaskEst] = useState(1);
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -57,12 +83,27 @@ export const TaskList: React.FC<TaskListProps> = ({
     })
   );
 
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveDragId(event.active.id as string);
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
-    if (active.id !== over?.id) {
+    setActiveDragId(null);
+
+    if (!over) return;
+
+    // Handle Drop to Trash
+    if (over.id === 'trash-zone') {
+      onDeleteTask(active.id as string);
+      return;
+    }
+
+    // Handle Reorder
+    if (active.id !== over.id) {
       const oldIndex = tasks.findIndex((t) => t.id === active.id);
-      const newIndex = tasks.findIndex((t) => t.id === over?.id);
+      const newIndex = tasks.findIndex((t) => t.id === over.id);
 
       onReorderTasks(oldIndex, newIndex);
     }
@@ -79,7 +120,7 @@ export const TaskList: React.FC<TaskListProps> = ({
   };
 
   return (
-    <div className="h-full flex flex-col bg-stone-50 border-r border-stone-200">
+    <div className="h-full flex flex-col bg-stone-50 border-r border-stone-200 relative">
 
       {/* Header */}
       <div className="p-6 border-b border-stone-200 bg-white shadow-sm z-10">
@@ -100,7 +141,7 @@ export const TaskList: React.FC<TaskListProps> = ({
       </div>
 
       {/* Task List */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 relative">
 
         {/* Add Task Form */}
         {isAdding && (
@@ -132,6 +173,7 @@ export const TaskList: React.FC<TaskListProps> = ({
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
           <SortableContext
@@ -154,6 +196,10 @@ export const TaskList: React.FC<TaskListProps> = ({
               />
             ))}
           </SortableContext>
+
+          {/* Trash Zone */}
+          {activeDragId && <TrashZone />}
+
         </DndContext>
 
         {tasks.length === 0 && !isAdding && (

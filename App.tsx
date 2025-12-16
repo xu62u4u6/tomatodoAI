@@ -2,19 +2,23 @@ import React, { useState } from 'react';
 import { TaskList } from './components/TaskList';
 import { ChatSidebar } from './components/ChatSidebar';
 import { FocusZone } from './components/FocusZone';
-import { TimerMode, Task } from './types';
+import { TimerMode, Task, TimerSettings } from './types';
 import { TIMER_SETTINGS, MODE_APP_BG_COLORS, MODE_RGB_VALUES } from './constants';
 import { storageService } from './services/storageService';
 import Header from './components/Header';
+import SettingsModal from './components/SettingsModal';
 
 const App: React.FC = () => {
   // --- Global State ---
   const [timerMode, setTimerMode] = useState<TimerMode>(TimerMode.Pomodoro);
-  const [timeLeft, setTimeLeft] = useState<number>(TIMER_SETTINGS[TimerMode.Pomodoro]);
+  const [timerSettings, setTimerSettings] = useState<TimerSettings>(TIMER_SETTINGS);
+  const [timeLeft, setTimeLeft] = useState<number>(TIMER_SETTINGS[TimerMode.Pomodoro]); // Initialize with default, update after load
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [completedSessionPomodoros, setCompletedSessionPomodoros] = useState(0); // Track pomodoros for long break
+
+  const [showSettings, setShowSettings] = useState(false);
 
   // Initial load
   React.useEffect(() => {
@@ -37,6 +41,17 @@ const App: React.FC = () => {
         setTasks(defaults);
         setActiveTaskId(defaults[0].id);
       }
+
+      // Load Settings
+      const savedSettings = await storageService.loadTimerSettings();
+      if (savedSettings) {
+        setTimerSettings(savedSettings);
+        // If we are at initial state (not running), update time left to match saved setting
+        // Doing this safely depends on if we persist running state (which we don't currently)
+        if (!isTimerRunning) {
+          setTimeLeft(savedSettings[TimerMode.Pomodoro]);
+        }
+      }
     };
     load();
   }, []);
@@ -54,6 +69,20 @@ const App: React.FC = () => {
   }, [tasks]);
 
   // --- Handlers ---
+
+  const handleSaveSettings = (newSettings: TimerSettings) => {
+    setTimerSettings(newSettings);
+    storageService.saveTimerSettings(newSettings);
+
+    // If timer is not running, update logic:
+    // If the setting for the CURRENT mode changed, update timeLeft immediately.
+    // If it didn't change, leave it (e.g. user paused at 10:00, changed setting from 25 to 30. Should it jump to 30? Usually yes if it was at 'start', but if partially done?
+    // Let's adopt a simple rule: If timer is NOT running, reset to the new full duration of current mode. 
+    // This avoids "ghost" time discrepancies.
+    if (!isTimerRunning) {
+      setTimeLeft(newSettings[timerMode]);
+    }
+  };
 
   const handleAddTask = (title: string, est: number) => {
     const newTask: Task = {
@@ -131,18 +160,18 @@ const App: React.FC = () => {
       if (newCompleted % 4 === 0) {
         // Switch to Long Break
         setTimerMode(TimerMode.LongBreak);
-        setTimeLeft(TIMER_SETTINGS[TimerMode.LongBreak]);
+        setTimeLeft(timerSettings[TimerMode.LongBreak]);
         sendNotification("Pomodoro Complete!", "Great job! Take a long break.");
       } else {
         // Switch to Short Break
         setTimerMode(TimerMode.ShortBreak);
-        setTimeLeft(TIMER_SETTINGS[TimerMode.ShortBreak]);
+        setTimeLeft(timerSettings[TimerMode.ShortBreak]);
         sendNotification("Pomodoro Complete!", "Time for a short break.");
       }
     } else {
       // Logic for Break completion (Short or Long)
       setTimerMode(TimerMode.Pomodoro);
-      setTimeLeft(TIMER_SETTINGS[TimerMode.Pomodoro]);
+      setTimeLeft(timerSettings[TimerMode.Pomodoro]);
       sendNotification("Break Over!", "Time to focus again.");
 
       // Reset session count if coming back from long break
@@ -180,7 +209,7 @@ const App: React.FC = () => {
         {/* Center Column: Focus Zone (Execution) */}
         <main className={`flex-1 min-w-0 relative flex flex-col items-center transition-colors duration-500 bg-theme/5 pt-6`}>
           {/* Header (Center Top) */}
-          <Header />
+          <Header onOpenSettings={() => setShowSettings(true)} />
 
           {/* Mobile Menu Toggle (Absolute Top-Right of Main Area) */}
           <div className="absolute top-6 right-6 md:hidden z-50">
@@ -196,6 +225,7 @@ const App: React.FC = () => {
             setIsRunning={setIsTimerRunning}
             onTimerComplete={handleTimerComplete}
             activeTask={tasks.find(t => t.id === activeTaskId)}
+            timerSettings={timerSettings}
           />
         </main>
 
@@ -211,6 +241,13 @@ const App: React.FC = () => {
         </aside>
 
       </div>
+
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        onSave={handleSaveSettings}
+        initialSettings={timerSettings}
+      />
     </div>
   );
 };

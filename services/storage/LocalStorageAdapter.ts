@@ -34,4 +34,19 @@ export class LocalStorageAdapter implements StorageAdapter {
     async saveChatHistory(history: BaseMessage[]): Promise<void> {
         localStorage.setItem(this.CHAT_KEY, JSON.stringify(history));
     }
+
+    async loadTimerSettings(): Promise<Record<string, number> | null> {
+        const saved = localStorage.getItem('tomatodo_timer_settings');
+        if (!saved) return null;
+        try {
+            return JSON.parse(saved);
+        } catch (e) {
+            console.error('Failed to parse timer settings', e);
+            return null;
+        }
+    }
+
+    async saveTimerSettings(settings: Record<string, number>): Promise<void> {
+        localStorage.setItem('tomatodo_timer_settings', JSON.stringify(settings));
+    }
 }

@@ -37,3 +37,5 @@ export interface AppState {
 export interface AIChatSession {
   sendMessage: (params: { message: string }) => Promise<{ text: string }>;
 }
+
+export type TimerSettings = Record<TimerMode, number>;

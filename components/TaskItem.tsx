@@ -108,14 +108,30 @@ export const TaskItem: React.FC<TaskItemProps> = ({
                 {/* Title & Content */}
                 <div className="flex-1 min-w-0">
                     {isExpanded ? (
-                        <input
-                            type="text"
+                        <textarea
                             value={editingTitle}
-                            onChange={(e) => setEditingTitle(e.target.value)}
+                            onChange={(e) => {
+                                setEditingTitle(e.target.value);
+                                e.target.style.height = 'auto';
+                                e.target.style.height = e.target.scrollHeight + 'px';
+                            }}
+                            ref={(el) => {
+                                if (el) {
+                                    el.style.height = 'auto';
+                                    el.style.height = el.scrollHeight + 'px';
+                                }
+                            }}
                             onBlur={saveEditing}
-                            className="w-full font-serif text-xl font-bold text-stone-800 bg-transparent border-none p-0 focus:ring-0 placeholder-stone-300"
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    e.currentTarget.blur();
+                                }
+                            }}
+                            className="w-full font-serif text-xl font-bold text-stone-800 bg-transparent border-none p-0 focus:ring-0 placeholder-stone-300 resize-none overflow-hidden"
                             placeholder="Task Title"
                             autoFocus
+                            rows={1}
                         />
                     ) : (
                         <div className="flex items-center justify-between">

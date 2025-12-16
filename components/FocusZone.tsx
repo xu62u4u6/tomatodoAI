@@ -1,6 +1,6 @@
 import React from 'react';
 import { Timer } from './Timer';
-import { TimerMode, Task } from '../types';
+import { TimerMode, Task, TimerSettings } from '../types';
 
 interface FocusZoneProps {
     timerMode: TimerMode;
@@ -11,6 +11,7 @@ interface FocusZoneProps {
     setIsRunning: (isRunning: boolean) => void;
     onTimerComplete: () => void;
     activeTask: Task | undefined;
+    timerSettings: TimerSettings;
 }
 
 export const FocusZone: React.FC<FocusZoneProps> = ({
@@ -21,7 +22,8 @@ export const FocusZone: React.FC<FocusZoneProps> = ({
     isTimerRunning,
     setIsRunning,
     onTimerComplete,
-    activeTask
+    activeTask,
+    timerSettings
 }) => {
     return (
         <div className="flex flex-col items-center justify-center h-full p-8 transition-colors duration-500">
@@ -36,6 +38,7 @@ export const FocusZone: React.FC<FocusZoneProps> = ({
                     isRunning={isTimerRunning}
                     setIsRunning={setIsRunning}
                     onTimerComplete={onTimerComplete}
+                    timerSettings={timerSettings}
                 />
             </div>
 
@@ -52,7 +55,7 @@ export const FocusZone: React.FC<FocusZoneProps> = ({
 
                     {activeTask ? (
                         <div className="text-center w-full relative z-10">
-                            <h2 className="font-sans text-2xl md:text-3xl font-bold text-stone-800 mb-4 leading-tight">
+                            <h2 className="font-serif text-2xl md:text-3xl font-bold text-stone-800 mb-4 leading-tight">
                                 {activeTask.title}
                             </h2>
 

@@ -11,4 +11,7 @@ export interface StorageAdapter {
 
     loadChatHistory(): Promise<BaseMessage[]>;
     saveChatHistory(history: BaseMessage[]): Promise<void>;
+
+    loadTimerSettings(): Promise<Record<string, number> | null>;
+    saveTimerSettings(settings: Record<string, number>): Promise<void>;
 }

@@ -14,45 +14,82 @@ interface BaseMessage {
 }
 
 export const createChatSession = (systemInstruction?: string): AIChatSession => {
-    const history: BaseMessage[] = [];
+    const chatHistory: BaseMessage[] = [];
 
     if (systemInstruction) {
-        history.push({ role: 'system', content: systemInstruction });
+        chatHistory.push({ role: 'system', content: systemInstruction });
     } else {
-        history.push({
+        chatHistory.push({
             role: 'system',
-            content: "You are TomatodoAI, an intelligent productivity coach. Your goal is to help the user break down complex projects into small, actionable tasks. When the user speaks, analyze their current context and tasks. Always provide a friendly conversational response in the 'text' field. If there are opportunities to break down work or add useful tasks, provide them in the 'suggestedTasks' array. Try to provide at least 3 suggestions when relevant. Estimate pomodoros (25m blocks) conservatively. Response MUST be valid JSON with 'text' (string) and 'suggestedTasks' (array of {title, estPomodoros}) properties."
+            content: `You are **TomatodoAI**, an intelligent productivity assistant.
+
+Your primary goal is to help the user break down complex projects into clear, actionable tasks.
+
+**IMPORTANT: Always respond in Traditional Chinese if user using Traditional Chinese (繁體中文).**
+
+When the user sends a message:
+1. Analyze the user's current context, goals, and workload.
+2. Produce a friendly, conversational response in the **"text"** field.
+3. If there are meaningful opportunities to break down work, propose tasks in **"suggestedTasks"**.
+
+Guidelines for suggested tasks:
+- Provide **3–5** high-quality, useful task suggestions when appropriate.
+- Each task must include:
+  - **title** (string)
+  - **estPomodoros** (integer, conservative estimate of 25-minute blocks)
+- Only suggest tasks when they add real value. Otherwise, return an empty array.
+
+Output format requirement:
+- You must respond with **valid JSON only**.
+- The JSON must contain exactly two properties:
+  - "text": string
+  - "suggestedTasks": array of objects with { "title": string, "estPomodoros": number }
+
+Example schema (do NOT output this literally):
+{
+  "text": "...",
+  "suggestedTasks": [
+    { "title": "...", "estPomodoros": 1 },
+    ...
+  ]
+}
+`
         });
     }
 
     return {
         sendMessage: async ({ message }: { message: string }) => {
             // Add user message to history
-            history.push({ role: 'user', content: message });
+            chatHistory.push({ role: 'user', content: message });
 
             // Sliding window: Keep system message + last 10 messages to prevent token overflow
             // This effectively implements "short-term memory"
-            if (history.length > 11) {
+            if (chatHistory.length > 11) {
                 // Keep index 0 (system) and the last 10
-                history.splice(1, history.length - 11);
+                chatHistory.splice(1, chatHistory.length - 11);
             }
 
             try {
                 const completion = await openai.chat.completions.create({
-                    model: "gpt-5-nano", // Or gpt-3.5-turbo
-                    messages: history,
+                    model: "gpt-5-mini", // Reverted to 4o-mini for speed and stability
+                    messages: chatHistory,
                     response_format: { type: "json_object" }
                 });
 
                 const responseContent = completion.choices[0].message.content || "{}";
 
                 // Add assistant response to history
-                history.push({ role: 'assistant', content: responseContent });
+                chatHistory.push({ role: 'assistant', content: responseContent });
 
                 return { text: responseContent };
             } catch (error) {
                 console.error("OpenAI API Error:", error);
-                return { text: JSON.stringify({ text: "I'm having trouble connecting to OpenAI. Please check your API key.", suggestedTasks: [] }) };
+                return {
+                    text: JSON.stringify({
+                        text: "I'm having trouble connecting to OpenAI. Please check your API key.",
+                        suggestedTasks: []
+                    })
+                };
             }
         }
     };

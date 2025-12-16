@@ -1,7 +1,11 @@
 
 import React from 'react';
 
-const Header: React.FC = () => {
+interface HeaderProps {
+    onOpenSettings: () => void;
+}
+
+const Header: React.FC<HeaderProps> = ({ onOpenSettings }) => {
     return (
         <nav className="w-full px-6 py-4 flex items-center justify-between z-20">
             {/* Left: Logo / Brand */}
@@ -16,6 +20,7 @@ const Header: React.FC = () => {
             <div className="flex items-center gap-3">
                 {/* Settings Button */}
                 <button
+                    onClick={onOpenSettings}
                     className="p-2 rounded-md hover:bg-zinc-200/50 text-zinc-600 hover:text-zinc-900 transition-all duration-200"
                     title="Settings"
                 >

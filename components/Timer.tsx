@@ -10,6 +10,7 @@ interface TimerProps {
   isRunning: boolean;
   setIsRunning: (running: boolean) => void;
   onTimerComplete: () => void;
+  timerSettings: { [key in TimerMode]: number };
 }
 
 export const Timer: React.FC<TimerProps> = ({
@@ -19,7 +20,8 @@ export const Timer: React.FC<TimerProps> = ({
   setTimeLeft,
   isRunning,
   setIsRunning,
-  onTimerComplete
+  onTimerComplete,
+  timerSettings
 }) => {
 
   // Handle timer tick
@@ -53,7 +55,7 @@ export const Timer: React.FC<TimerProps> = ({
   const handleModeChange = (newMode: TimerMode) => {
     setMode(newMode);
     setIsRunning(false);
-    setTimeLeft(TIMER_SETTINGS[newMode]);
+    setTimeLeft(timerSettings[newMode]);
   };
 
   // Dynamic colors based on mode

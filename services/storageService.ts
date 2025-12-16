@@ -33,6 +33,14 @@ class StorageService {
     async saveChatHistory(history: any[]) {
         return this.adapter.saveChatHistory(history);
     }
+
+    async loadTimerSettings() {
+        return this.adapter.loadTimerSettings();
+    }
+
+    async saveTimerSettings(settings: any) {
+        return this.adapter.saveTimerSettings(settings);
+    }
 }
 
 // Initialize with LocalStorage by default

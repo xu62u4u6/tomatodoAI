@@ -25,7 +25,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
   const chatSessionRef = useRef<AIChatSession | null>(null);
 
   // Track which suggestions have been added to prevent duplicates/confusion
-  const [addedSuggestions, setAddedSuggestions] = useState<Set<string>>(new Set());
+
 
   useEffect(() => {
     chatSessionRef.current = createChatSession();
@@ -34,15 +34,31 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
     const loadHistory = async () => {
       const saved = await storageService.loadChatHistory();
       if (saved.length > 0) {
-        // Convert BaseMessage back to ChatMessage (UI)
-        // Note: BaseMessage doesn't have ID, we need to generate them or store them.
-        // The adapter stores BaseMessage { role, content }.
-        // We need to map them.
-        const restored: ChatMessage[] = saved.map((m, i) => ({
-          id: `hist-${i}`,
-          role: (m.role === 'assistant' ? 'model' : 'user') as 'user' | 'model',
-          text: m.content
-        }));
+        const restored: ChatMessage[] = saved.map((m, i) => {
+          let text = m.content;
+          let suggestions: SuggestedTask[] | undefined = undefined;
+
+          // Try to recover structured data for assistant messages
+          if (m.role === 'assistant') {
+            try {
+              const parsed = JSON.parse(m.content);
+              // Check if it looks like our structured response
+              if (parsed.text && Array.isArray(parsed.suggestedTasks)) {
+                text = parsed.text;
+                suggestions = parsed.suggestedTasks;
+              }
+            } catch (e) {
+              // Not JSON, just plain text
+            }
+          }
+
+          return {
+            id: `hist-${i}`,
+            role: (m.role === 'assistant' ? 'model' : 'user') as 'user' | 'model',
+            text: text,
+            suggestions: suggestions
+          };
+        });
         setMessages(restored);
       } else {
         setMessages([
@@ -57,10 +73,20 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
   useEffect(() => {
     if (messages.length > 0) {
       // Map UI messages back to storage format
-      const toSave = messages.map(m => ({
-        role: (m.role === 'model' ? 'assistant' : 'user') as 'assistant' | 'user' | 'system',
-        content: m.text
-      }));
+      const toSave = messages.map(m => {
+        let content = m.text;
+        // If it's a model message with suggestions, preserve the structure
+        if (m.role === 'model' && m.suggestions && m.suggestions.length > 0) {
+          content = JSON.stringify({
+            text: m.text,
+            suggestedTasks: m.suggestions
+          });
+        }
+        return {
+          role: (m.role === 'model' ? 'assistant' : 'user') as 'assistant' | 'user' | 'system',
+          content: content
+        };
+      });
       storageService.saveChatHistory(toSave);
     }
   }, [messages]);
@@ -105,6 +131,14 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
 
       try {
         parsedResponse = JSON.parse(responseText);
+
+        // Sanitize suggestions: Ensure estPomodoros is an integer
+        if (parsedResponse.suggestedTasks && Array.isArray(parsedResponse.suggestedTasks)) {
+          parsedResponse.suggestedTasks = parsedResponse.suggestedTasks.map(t => ({
+            ...t,
+            estPomodoros: Math.max(1, Math.round(Number(t.estPomodoros) || 1))
+          }));
+        }
       } catch (e) {
         console.error("Failed to parse JSON response", e);
         parsedResponse = { text: responseText, suggestedTasks: [] };
@@ -126,20 +160,26 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
     }
   };
 
-  const handleAddSuggestion = (suggestion: SuggestedTask, index: number, msgId: string) => {
-    // Unique ID for this specific suggestion instance
-    const suggestionId = `${msgId}-${index}`;
-    if (addedSuggestions.has(suggestionId)) return;
 
-    onAddTask(suggestion.title, suggestion.estPomodoros);
-    setAddedSuggestions(prev => new Set(prev).add(suggestionId));
-  };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
+  };
+
+  const handleClearHistory = () => {
+    // Reset to initial welcome message
+    const initialMsg: ChatMessage = { id: '1', role: 'model', text: 'Hello! I can help you break down your projects. Tell me what you want to achieve today.' };
+    setMessages([initialMsg]);
+
+    // Clear storage
+    // Note: The existing useEffect saves 'messages' whenever it changes. 
+    // Setting it to [initialMsg] will trigger the save.
+    // However, we want to ensure any 'chatSessionRef' state is also fresh if needed, 
+    // but createChatSession manages its own history internally which we can't easily clear unless we recreate it.
+    chatSessionRef.current = createChatSession();
   };
 
   return (
@@ -150,7 +190,15 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
           <i className="fa-solid fa-fire text-theme opacity-70"></i>
           <span className="font-serif font-semibold text-stone-800 text-lg">TomatodoAI</span>
         </div>
-        {/* <span className="text-[10px] font-bold text-stone-400 border border-stone-200 px-2 py-0.5 rounded-full uppercase tracking-wider">Beta</span> */}
+
+        {/* Actions */}
+        <button
+          onClick={handleClearHistory}
+          className="text-stone-400 hover:text-stone-600 p-2 rounded-full hover:bg-stone-50 transition-colors"
+          title="Clear Chat History"
+        >
+          <i className="fa-regular fa-trash-can text-sm"></i>
+        </button>
       </div>
 
       {/* Messages */}
@@ -177,36 +225,81 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                 <div className="mt-4 space-y-2 border-t border-stone-100 pt-3">
                   <p className="text-[10px] uppercase tracking-wider font-bold text-stone-400 mb-2">Suggested Tasks</p>
                   {msg.suggestions.map((task, idx) => {
-                    const suggestionId = `${msg.id}-${idx}`;
-                    const isAdded = addedSuggestions.has(suggestionId);
+                    const isAdded = tasks.some(t => t.title === task.title);
+
+                    const updateSuggestion = (updates: Partial<SuggestedTask>) => {
+                      setMessages(prev => prev.map(m =>
+                        m.id === msg.id
+                          ? { ...m, suggestions: m.suggestions?.map((s, i) => i === idx ? { ...s, ...updates } : s) }
+                          : m
+                      ));
+                    };
 
                     return (
-                      <div key={idx} className="group flex items-center justify-between bg-stone-50 p-2.5 rounded-lg border border-stone-200 hover:border-morandi-red/50 transition-colors">
-                        <div className="flex-1 min-w-0 mr-3">
-                          <p className="font-medium text-stone-800 truncate text-xs sm:text-sm">{task.title}</p>
-                          <div className="flex items-center gap-1 mt-1">
-                            <i className="fa-regular fa-clock text-[10px] text-stone-400"></i>
-                            <span className="text-[10px] text-stone-500">{task.estPomodoros} pomodoros</span>
-                          </div>
+                      <div key={idx} className={`group flex flex-col gap-2 bg-stone-50 p-3 rounded-xl border border-stone-200 transition-all shadow-sm ${isAdded ? 'border-theme/20 bg-theme/5' : 'hover:border-morandi-red/40'}`}>
+
+                        {/* Top Row: Title & Add Action */}
+                        <div className="flex items-start justify-between gap-3">
+                          <textarea
+                            value={task.title}
+                            title={task.title}
+                            onChange={(e) => {
+                              updateSuggestion({ title: e.target.value });
+                              e.target.style.height = 'auto';
+                              e.target.style.height = e.target.scrollHeight + 'px';
+                            }}
+                            ref={(el) => {
+                              if (el) {
+                                el.style.height = 'auto';
+                                el.style.height = el.scrollHeight + 'px';
+                              }
+                            }}
+                            className="flex-1 bg-transparent border-none p-0 text-sm font-medium text-stone-800 placeholder-stone-400 focus:ring-0 resize-none overflow-hidden leading-relaxed"
+                            rows={1}
+                            placeholder="Task title"
+                          />
+
+                          <button
+                            onClick={() => onAddTask(task.title, task.estPomodoros)}
+                            disabled={isAdded}
+                            className={`
+                                w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-full transition-all
+                                ${isAdded
+                                ? 'bg-theme/10 text-theme cursor-default'
+                                : 'bg-stone-900 text-white hover:bg-black shadow-md hover:scale-105 active:scale-95'
+                              }
+                              `}
+                            title={isAdded ? "Added to list" : "Add to tasks"}
+                          >
+                            {isAdded ? <i className="fa-solid fa-check text-xs"></i> : <i className="fa-solid fa-plus text-xs"></i>}
+                          </button>
                         </div>
-                        <button
-                          onClick={() => handleAddSuggestion(task, idx, msg.id)}
-                          disabled={isAdded}
-                          className={`
-                            w-8 h-8 flex items-center justify-center rounded-full transition-all
-                            ${isAdded
-                              ? 'bg-green-100 text-green-600 cursor-default'
-                              : 'bg-white border border-stone-200 text-stone-400 hover:text-morandi-red hover:border-morandi-red shadow-sm hover:shadow-md'
-                            }
-                          `}
-                          title="Add to task list"
-                        >
-                          {isAdded ? (
-                            <i className="fa-solid fa-check text-xs"></i>
-                          ) : (
-                            <i className="fa-solid fa-arrow-left text-xs"></i>
-                          )}
-                        </button>
+
+                        {/* Bottom Row: Controls */}
+                        {!isAdded && (
+                          <div className="flex items-center gap-3">
+                            <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Est.</span>
+                            <div className="flex items-center bg-white rounded-lg border border-stone-200 p-0.5">
+                              <button
+                                onClick={() => updateSuggestion({ estPomodoros: Math.max(1, task.estPomodoros - 1) })}
+                                className="w-6 h-6 flex items-center justify-center text-stone-300 hover:text-stone-500 hover:bg-stone-100 rounded-md transition-colors"
+                              >
+                                <i className="fa-solid fa-minus text-[10px]"></i>
+                              </button>
+                              <span className="w-6 text-center text-xs font-bold text-stone-700">{task.estPomodoros}</span>
+                              <button
+                                onClick={() => updateSuggestion({ estPomodoros: Math.min(10, task.estPomodoros + 1) })}
+                                className="w-6 h-6 flex items-center justify-center text-stone-300 hover:text-stone-500 hover:bg-stone-100 rounded-md transition-colors"
+                              >
+                                <i className="fa-solid fa-plus text-[10px]"></i>
+                              </button>
+                            </div>
+                            <div className="flex items-center gap-1 text-stone-400">
+                              <i className="fa-solid fa-fire text-[10px] opacity-50"></i>
+                              <span className="text-[10px]">pomodoros</span>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
