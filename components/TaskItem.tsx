@@ -186,12 +186,12 @@ export const TaskItem: React.FC<TaskItemProps> = ({
                     <div className="flex items-center gap-4 mb-4 py-2 border-t border-b border-stone-100">
                         <span className="text-xs font-bold text-stone-400 uppercase tracking-widest">Target</span>
                         <div className="flex items-center gap-3">
-                            <button onClick={() => { setEditingEst(Math.max(1, editingEst - 1)); saveEditing(); }} className="w-6 h-6 rounded bg-stone-100 hover:bg-stone-200 text-stone-600 flex items-center justify-center"><i className="fa-solid fa-minus text-[10px]"></i></button>
+                            <button onClick={() => { const newVal = Math.max(1, editingEst - 1); setEditingEst(newVal); onUpdate(task.id, editingTitle, newVal, editingNote); }} className="w-6 h-6 rounded bg-stone-100 hover:bg-stone-200 text-stone-600 flex items-center justify-center"><i className="fa-solid fa-minus text-[10px]"></i></button>
                             <div className="flex items-baseline gap-1">
                                 <span className="font-bold text-lg text-stone-800">{editingEst}</span>
                                 <span className="text-xs text-stone-400">pomodoros</span>
                             </div>
-                            <button onClick={() => { setEditingEst(Math.min(10, editingEst + 1)); saveEditing(); }} className="w-6 h-6 rounded bg-stone-100 hover:bg-stone-200 text-stone-600 flex items-center justify-center"><i className="fa-solid fa-plus text-[10px]"></i></button>
+                            <button onClick={() => { const newVal = Math.min(10, editingEst + 1); setEditingEst(newVal); onUpdate(task.id, editingTitle, newVal, editingNote); }} className="w-6 h-6 rounded bg-stone-100 hover:bg-stone-200 text-stone-600 flex items-center justify-center"><i className="fa-solid fa-plus text-[10px]"></i></button>
                         </div>
                     </div>
 
