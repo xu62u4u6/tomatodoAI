@@ -68,6 +68,14 @@ const App: React.FC = () => {
     }
   }, [tasks]);
 
+  // Update document title with timer
+  React.useEffect(() => {
+    const m = Math.floor(timeLeft / 60);
+    const s = timeLeft % 60;
+    const timeString = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    document.title = `${timeString} TomatodoAI`;
+  }, [timeLeft]);
+
   // --- Handlers ---
 
   const handleSaveSettings = (newSettings: TimerSettings) => {
