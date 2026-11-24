@@ -17,6 +17,7 @@ const App: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [completedSessionPomodoros, setCompletedSessionPomodoros] = useState(0); // Track pomodoros for long break
+  const [hasLoadedTasks, setHasLoadedTasks] = useState(false);
 
   const [showSettings, setShowSettings] = useState(false);
 
@@ -29,18 +30,9 @@ const App: React.FC = () => {
       }
 
       const savedTasks = await storageService.loadTasks();
-      if (savedTasks.length > 0) {
-        setTasks(savedTasks);
-        // Restore active task if possible, or default to first
-        if (savedTasks.length > 0) setActiveTaskId(savedTasks[0].id);
-      } else {
-        // Default tasks for new users
-        const defaults: Task[] = [
-          { id: '1', title: 'Plan project architecture', estPomodoros: 3, actPomodoros: 0, isCompleted: false, note: 'Review system requirements and define component hierarchy.' },
-        ];
-        setTasks(defaults);
-        setActiveTaskId(defaults[0].id);
-      }
+      setTasks(savedTasks);
+      setActiveTaskId(savedTasks[0]?.id ?? null);
+      setHasLoadedTasks(true);
 
       // Load Settings
       const savedSettings = await storageService.loadTimerSettings();
@@ -63,10 +55,10 @@ const App: React.FC = () => {
     // We should be careful not to overwrite with [] if we haven't loaded yet.
     // But since we set defaults if empty, tasks shouldn't be empty unless user deleted everything.
     // Let's just save.
-    if (tasks.length > 0 || activeTaskId !== null) { // Simple heuristic to avoid saving initial [] before load
+    if (hasLoadedTasks) {
       storageService.saveTasks(tasks);
     }
-  }, [tasks]);
+  }, [tasks, hasLoadedTasks]);
 
   // Update document title with timer
   React.useEffect(() => {

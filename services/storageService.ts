@@ -1,5 +1,5 @@
 import { StorageAdapter } from './storage/types';
-import { LocalStorageAdapter } from './storage/LocalStorageAdapter';
+import { HttpStorageAdapter } from './storage/HttpStorageAdapter';
 
 class StorageService {
     private adapter: StorageAdapter;
@@ -43,5 +43,4 @@ class StorageService {
     }
 }
 
-// Initialize with LocalStorage by default
-export const storageService = new StorageService(new LocalStorageAdapter());
+export const storageService = new StorageService(new HttpStorageAdapter());
